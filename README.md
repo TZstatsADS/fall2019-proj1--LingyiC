@@ -1,7 +1,7 @@
 # Applied Data Science @ Columbia
 ## Fall 2019
 ## Project 1: A "data story" on the songs of our times
-## Lingyi Cai (UNI:lc3352)
+#### Lingyi Cai (UNI:lc3352)
 
 ---
 
