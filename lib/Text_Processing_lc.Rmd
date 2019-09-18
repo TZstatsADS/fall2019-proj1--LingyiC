@@ -1,0 +1,140 @@
+---
+title: "Text_Processing_lc"
+author: "Lingyi"
+date: "9/15/2019"
+output: html_document
+---
+### Step 1 - Load the data to be cleaned and processed
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tm)
+library(data.table)
+library(tidytext)
+library(tidyverse)
+library(DT)
+```
+
+```{r}
+# load lyrics data
+load('../data/lyrics.RData') 
+```
+
+```{r}
+fix.contractions <- function(doc) {
+  # "won't" is a special case as it does not expand to "wo not"
+  doc <- gsub("won't", "will not", doc)
+  doc <- gsub("can't", "can not", doc)
+  doc <- gsub("n't", " not", doc)
+  doc <- gsub("'ll", " will", doc)
+  doc <- gsub("'re", " are", doc)
+  doc <- gsub("'ve", " have", doc)
+  doc <- gsub("'m", " am", doc)
+  doc <- gsub("'d", " would", doc)
+  # 's could be 'is' or could be possessive: it has no expansion
+  doc <- gsub("'s", "", doc)
+  return(doc)
+}
+# fix (expand) contractions
+dt_lyrics$lyrics <- sapply(dt_lyrics$lyrics, fix.contractions)
+dt_lyrics$lyrics <- sapply(dt_lyrics$lyrics, tolower)
+```
+
+```{r}
+leadingWhitespace <- content_transformer(function(x) str_trim(x, side = "both"))
+# remove stop words
+data("stop_words")
+word <- c("lot", "today", "months", "month", "wanna", "wouldnt", "wasnt", "ha", "na", "ooh", "da",
+        "gonna", "im", "dont", "aint", "wont", "yeah", "la", "oi", "nigga", "fuck",
+          "hey", "year", "years", "last", "past", "feel", "ai")
+stop_words <- c(stop_words$word, word)
+# clean the data and make a corpus
+corpus <- VCorpus(VectorSource(dt_lyrics$lyrics))%>%
+  tm_map(content_transformer(tolower))%>%
+  tm_map(removePunctuation)%>%
+  tm_map(removeWords, character(0))%>%
+  tm_map(removeWords, stop_words)%>%
+  tm_map(removeNumbers)%>%
+  tm_map(stripWhitespace)%>%
+  tm_map(leadingWhitespace)
+```
+
+### Step 3 - Stemming words and converting tm object to tidy object
+
+Stemming reduces a word to its word *stem*. We stem the words here and then convert the "tm" object to a "tidy" object for much faster processing.
+
+```{r stemming}
+stemmed <- tm_map(corpus, stemDocument) %>%
+  tidy() %>%
+  select(text)
+```
+
+### Step 4 - Creating tidy format of the dictionary to be used for completing stems
+
+We also need a dictionary to look up the words corresponding to the stems.
+
+```{r tidy dictionary}
+dict <- tidy(corpus) %>%
+  select(text) %>%
+  unnest_tokens(dictionary, text)
+```
+
+### Step 5 - Combining stems and dictionary into the same tibble
+
+Here we combine the stems and the dictionary into the same "tidy" object.
+
+```{r tidy stems with dictionary}
+completed <- stemmed %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(stems, text) %>%
+  bind_cols(dict) 
+```
+
+### Step 6 - Stem completion
+
+Lastly, we complete the stems by picking the corresponding word with the highest frequency.
+
+```{r stem completion, warning=FALSE, message=FALSE}
+completed <- completed %>%
+  group_by(stems) %>%
+  count(dictionary) %>%
+  mutate(word = dictionary[which.max(n)]) %>%
+  ungroup() %>%
+  select(stems, word) %>%
+  distinct() %>%
+  right_join(completed) %>%
+  select(-stems)
+```
+
+### Step 8 - Pasting stem completed individual words into their respective lyrics
+
+We want our processed words to resemble the structure of the original lyrics. So we paste the words together to form processed lyrics.
+
+```{r reverse unnest}
+completed <- completed %>%
+  group_by(id) %>%
+  summarise(stemmedwords= str_c(word, collapse = " ")) %>%
+  ungroup()
+```
+
+### Step 9 - Keeping a track of the processed lyrics with their own ID
+
+```{r cleaned hm_data, warning=FALSE, message=FALSE}
+dt_lyrics <- dt_lyrics %>%
+  mutate(id = row_number()) %>%
+  inner_join(completed)
+```
+
+### Exporting the processed text data into a CSV file
+
+```{r export data}
+save(dt_lyrics, file="../output/processed_lyrics_lc.RData")
+```
+
+
+
+
+
+
