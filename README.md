@@ -1,10 +1,11 @@
 # Applied Data Science @ Columbia
 ## Fall 2019
 ## Project 1: A "data story" on the songs of our times
+## Lingyi Cai (UNI:lc3352)
 
 ---
 
-Please clone this repo and see the whole results from `Project1_lc3352.html` file in `lib` folder. I only add part of results here.
+**Please clone this repo and see the whole results from `Project1_lc3352.html` file in `lib` folder. I only add part of results here.**
 
 > In this "Data Story", we will use `processed_lyrics_lc.RData` dataset (generate by using `Text_Processing_lc.Rmd` file, which is different from the tutorial one and processing data more accurately than tutorial one) and `artists.csv` dataset. We add some new columns such as decade (1970s, 1980s, 1990s and etc.), category (band and single). <br> 
 There are three parts, the first part is basic analysis. <br> 
